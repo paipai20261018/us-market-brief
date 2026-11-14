@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="盘前简报">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>纳指100 / 标普500 · 盘前简报</title>
+<style>
+  :root{
+    --navy:#123a6b; --navy-2:#1b4a86; --blue:#2f6fed;
+    --up:#e0342a; --down:#0f9d58;
+    --ink:#1c2733; --gray:#8a97a3; --line:#e8edf3;
+    --card:#eef3fb; --card-2:#f5f8fd; --concl:#e7f0fe;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif;
+    background:#e9edf2;color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .num{font-family:"DIN Alternate","Roboto Condensed","Helvetica Neue",Arial,sans-serif;
+       font-variant-numeric:tabular-nums;font-weight:700;letter-spacing:.5px}
+  #app{max-width:480px;margin:0 auto;height:100dvh;background:#fff;position:relative;overflow:hidden;
+       box-shadow:0 0 40px rgba(20,40,70,.10)}
+  .deck{display:flex;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;
+        scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .deck::-webkit-scrollbar{display:none}
+  .page{min-width:100%;width:100%;height:100%;scroll-snap-align:start;overflow-y:auto;
+        padding:26px 24px 74px;scrollbar-width:none}
+  .page::-webkit-scrollbar{display:none}
+
+  /* 页头 */
+  .eyebrow{font-size:12.5px;color:var(--gray);letter-spacing:.3px}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .hdr>div:first-child{flex:1;min-width:0}
+  .hdr .r{text-align:right;font-size:12.5px;color:var(--ink);line-height:1.5;white-space:nowrap;flex-shrink:0}
+  .hdr .r small{display:block;color:var(--gray);font-size:11.5px;font-weight:400}
+  .h1{font-size:27px;line-height:1.42;color:var(--navy);font-weight:800;letter-spacing:.5px;margin:26px 0 0}
+  .sub{font-size:13.5px;color:var(--gray);margin:8px 0 0;white-space:nowrap}
+  .sub b{color:var(--ink);font-weight:700}
+  .sec-t{font-size:20px;font-weight:800;color:var(--navy);letter-spacing:.3px;white-space:nowrap}
+  .rule{height:1px;background:var(--line);margin:20px 0}
+
+  /* 首页大数字 */
+  .bigrow{margin:20px 0 0}
+  .bigrow .lbl{font-size:15px;color:#6c7a89}
+  .bigrow .val{font-size:54px;line-height:1.1;color:var(--navy);margin-top:2px}
+  .bigrow .chg{font-size:30px;font-weight:700;letter-spacing:0}
+  .bigrow .flex{display:flex;align-items:baseline;justify-content:space-between}
+  .down{color:var(--down)} .up{color:var(--up)}
+
+  /* 卡片网格 */
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+  .box{background:var(--card);border-radius:10px;padding:14px 15px}
+  .box .t{font-size:11.5px;color:#6c7a89;line-height:1.4;white-space:nowrap}
+  .box .v{font-size:27px;color:var(--navy);margin-top:5px}
+  .box .v.blue{color:var(--blue)}
+  .box .s{font-size:12px;color:var(--gray);margin-top:3px}
+  .box.full{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center}
+  .box.full .v{margin-top:4px}
+  .box.full .rv{font-size:27px;color:var(--navy);margin-top:5px;text-align:right}
+
+  /* 第2页 四宫格 */
+  .quad{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+  .qbox{background:var(--card);border-radius:10px;padding:13px 14px 12px;min-height:112px}
+  .qbox .t{font-size:13px;color:#5d6b7a}
+  .qbox .p{font-size:31px;margin:7px 0 0;letter-spacing:-.5px;line-height:1}
+  .qbox .f{font-size:12px;color:var(--gray);margin-top:9px}
+
+  /* 折线图 */
+  .chart-wrap{margin-top:14px}
+  .chart-wrap .ct{font-size:15px;font-weight:800;color:var(--ink);margin:0 0 3px}
+  .chart-wrap .ce{display:flex;justify-content:space-between;font-size:12px;color:#6c7a89;margin-bottom:6px}
+  .chart{width:100%;height:64px;background:var(--card);border-radius:5px;display:block}
+
+  /* 结论条 */
+  .concl{background:var(--concl);border-radius:10px;padding:14px 16px;margin-top:16px;
+         font-size:15px;line-height:1.6;color:var(--navy)}
+  .note{background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:16px 17px;
+        margin-top:22px;font-size:14px;line-height:1.85;color:#4a5a6b}
+
+  /* 第3页 双列 */
+  .vs{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:24px}
+  .vs>div{padding:0 14px 0 0}
+  .vs>div+div{padding:0 0 0 18px;border-left:1px solid var(--line)}
+  .vs .name{font-size:19px;font-weight:800;color:var(--navy)}
+  .tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:5px;margin-top:9px}
+  .tag.cheap{background:#dff3e8;color:#0f8a4e}
+  .tag.mid{background:#e2ecfd;color:#2f6fed}
+  .tag.rich{background:#fdeae2;color:#d1591f}
+  .vs .k{font-size:12.5px;color:var(--gray);margin-top:22px}
+  .vs .big{font-size:38px;color:var(--navy);line-height:1.15;margin-top:3px}
+  .vs .big.green{color:var(--down)} .vs .big.blue{color:var(--blue)}
+  .vs .sm{font-size:11px;color:var(--gray);margin-top:4px;line-height:1.45}
+  .bar{height:4px;background:#e3eaf4;border-radius:3px;margin-top:11px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:3px}
+  .vs .ddbig{font-size:30px;color:var(--down);margin-top:3px}
+
+  /* 第4页 VIX */
+  .vix-top{display:flex;justify-content:space-between;align-items:flex-start;margin-top:34px}
+  .vix-top .k{font-size:14px;color:var(--gray)}
+  .vix-top .v{font-size:62px;color:var(--navy);line-height:1.1;margin-top:6px}
+  .vix-top .judge{font-size:38px;color:var(--navy);font-weight:800;line-height:1.15;margin-top:6px;text-align:right}
+  .vix-top .jm{font-size:12.5px;color:var(--gray);text-align:right;margin-top:4px}
+  .vix-chg{font-size:15px;color:var(--up);margin-top:12px;font-weight:600}
+  .band{position:relative;margin-top:26px}
+  .band .segments{display:flex;height:42px;border-radius:5px;overflow:hidden}
+  .band .segments i{flex:1}
+  .band .seg1{background:#9aa9bd}.band .seg2{background:#8dc2f2}
+  .band .seg3{background:var(--navy)}.band .seg4{background:#e8901a}.band .seg5{background:#e0342a}
+  .band .arrow{position:absolute;top:-11px;transform:translateX(-50%);font-size:15px;color:var(--navy);line-height:1}
+  .band .labels{display:flex;margin-top:9px}
+  .band .labels span{flex:1;text-align:center;font-size:12px;color:#6c7a89}
+  .band .labels span.on{color:var(--navy);font-weight:800}
+  .vix-bigline{font-size:19px;font-weight:800;color:var(--ink);margin-top:26px}
+  .vix-pcts{font-size:14px;color:#6c7a89;margin-top:12px}
+
+  /* 页脚 */
+  .foot{display:flex;justify-content:space-between;gap:8px;color:#a3aebb;font-size:10.5px;
+        margin-top:26px;line-height:1.5}
+  .foot span{white-space:nowrap}
+
+  /* 底部导航 */
+  .nav{position:absolute;bottom:0;left:0;right:0;height:56px;background:rgba(255,255,255,.94);
+       backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;align-items:center;
+       justify-content:center;gap:9px;z-index:10;padding-bottom:env(safe-area-inset-bottom)}
+  .nav .dot{width:7px;height:7px;border-radius:50%;background:#cfd8e4;transition:.25s;cursor:pointer}
+  .nav .dot.on{background:var(--navy);width:22px;border-radius:4px}
+  .nav .pg{position:absolute;right:16px;font-size:12px;color:var(--gray)}
+  .nav .refresh{position:absolute;left:14px;font-size:12px;color:var(--gray);cursor:pointer;
+                border:0;background:none;padding:6px}
+  .upd{position:absolute;left:16px;top:6px;font-size:10px;color:#c2cbd6;z-index:5}
+  @media (min-width:481px){ #app{height:min(920px,100dvh);margin-top:max(0px,calc((100dvh - 920px)/2))} }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="deck" id="deck"></div>
+  <div class="nav">
+    <button class="refresh" id="btnRefresh" title="刷新数据">↻ 刷新</button>
+    <div id="dots" style="display:flex;gap:9px;align-items:center"></div>
+    <span class="pg" id="pg">1 / 4</span>
+  </div>
+</div>
+
+<script>
+const FALLBACK = {"generated_at":"2026-11-14 10:04","date_label":"11 月 14 日 周六","data_date":"11-13","ndx":{"name":"纳斯达克100","price":27943.74,"prev":28289.19,"chg":-345.45,"pct":-1.22,"date":"2026-11-13"},"spx":{"name":"标普500","price":7561.67,"prev":7592.4,"chg":-30.73,"pct":-0.4,"date":"2026-11-13"},"vix":{"value":19.3,"chg":0.6,"pct":3.21,"pct10y":65,"pct3y":79,"pct1y":75,"level":"正常","level_idx":2},"fx":{"value":6.6719,"pct":0.05,"date":"2026-11-13"},"pe":{"ndx":{"pe":26.91,"pct":14,"count":257,"level":"偏便宜"},"spx":{"pe":23.62,"pct":29,"count":258,"level":"中性"}},"dd":{"ndx":{"cur":-10.51,"peak_date":"2026-10-06","days":28,"prev":-11.31,"prev_range":"26-06 → 26-07","prev_fix":55},"spx":{"cur":-3.29,"peak_date":"2026-10-06","days":28,"prev":-9.1,"prev_range":"26-01 → 26-03","prev_fix":16}},"series":{"ndx":[{"d":"11-02","v":27990},{"d":"11-03","v":28180},{"d":"11-04","v":28437},{"d":"11-05","v":26630},{"d":"11-06","v":26990},{"d":"11-09","v":27908},{"d":"11-10","v":27741},{"d":"11-11","v":28374},{"d":"11-12","v":28289},{"d":"11-13","v":27944}],"spx":[{"d":"11-02","v":7541},{"d":"11-03","v":7569},{"d":"11-04","v":7689},{"d":"11-05","v":7354},{"d":"11-06","v":7377},{"d":"11-09","v":7550},{"d":"11-10","v":7521},{"d":"11-11","v":7619},{"d":"11-12","v":7592},{"d":"11-13","v":7562}]}};
+let D = FALLBACK;
+
+/* ---------- 工具 ---------- */
+const f2 = n => (n==null?'—':Number(n).toFixed(2));
+const f4 = n => (n==null?'—':Number(n).toFixed(4));
+const f0 = n => (n==null?'—':String(Math.round(n)));
+const sgn = (n,d=2) => (n>0?'+':'') + Number(n).toFixed(d);
+const pctS = (n,d=2) => sgn(n,d)+'%';
+const cls = n => n>0?'up':(n<0?'down':'');
+const md = s => s ? s.slice(5).replace('-','-') : '';      // 2026-10-06 -> 10-06
+const ymd = s => s ? s.slice(0,10) : '—';
+
+/* 结论文案（随数据变化） */
+function summary2(){
+  const a=D.ndx.pct, b=D.spx.pct, v=D.vix.pct, fx=D.fx?D.fx.pct:0;
+  let idx;
+  if(a<0&&b<0) idx='两大指数同跌';
+  else if(a>0&&b>0) idx='两大指数同涨';
+  else idx='两大指数走势分化';
+  const vv = v>0?`VIX 涨 ${Math.abs(v).toFixed(1)}%`:(v<0?`VIX 跌 ${Math.abs(v).toFixed(1)}%`:'VIX 持平');
+  const ff = `美元/人民币 ${pctS(fx)}`;
+  return `${idx}，${vv}，${ff}。`;
+}
+function summary1(){
+  const d=D.dd.ndx;
+  const pe=D.pe.ndx.pct;
+  return `纳指 ${f0(D.ndx.price)}（${pctS(D.ndx.pct)}），PE 近五年 ${pe}% 分位，距 <span style="white-space:nowrap">${md(d.peak_date)}</span> 高点回撤 ${Math.abs(d.cur).toFixed(1)}%。`;
+}
+function summary3(){
+  const p1=D.pe.ndx.pct,p2=D.pe.spx.pct;
+  const cmp = p1<p2?'低于':(p1>p2?'高于':'等于');
+  return `纳指 PE 分位 ${p1}%，${cmp}标普的 ${p2}%；回撤：纳指 ${f2(D.dd.ndx.cur)}% / 标普 ${f2(D.dd.spx.cur)}%。`;
+}
+function vixSummary(){
+  const map={'极度乐观':'市场情绪极度乐观，波动预期偏低。','偏乐观':'市场情绪偏乐观，波动预期较低。',
+             '正常':'市场情绪中性，波动预期正常。','谨慎':'市场情绪偏谨慎，波动预期抬升。',
+             '恐慌':'市场情绪恐慌，波动预期显著抬升。'};
+  return map[D.vix.level]||'市场情绪中性。';
+}
+function peTag(level){
+  const c = level==='偏便宜'?'cheap':(level==='中性'||level==='偏低'?'mid':'rich');
+  return `<span class="tag ${c}">${level}</span>`;
+}
+function peColor(p){ return p==null?'var(--navy)':(p<20?'var(--down)':(p<70?'var(--blue)':'var(--up)')); }
+
+/* 折线 SVG */
+function spark(arr){
+  if(!arr||arr.length<2) return '';
+  const w=320,h=76,pad=6;
+  const vs=arr.map(x=>x.v), lo=Math.min(...vs), hi=Math.max(...vs);
+  const rg=(hi-lo)||1;
+  const pts=arr.map((x,i)=>{
+    const X=pad+i*(w-2*pad)/(arr.length-1);
+    const Y=pad+ (hi-x.v)/rg*(h-2*pad);
+    return [X,Y];
+  });
+  const line=pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const last=pts[pts.length-1];
+  return `<svg class="chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <polyline points="${line}" fill="none" stroke="#123a6b" stroke-width="2"
+      stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.2" fill="#123a6b"/>
+  </svg>`;
+}
+function chartBlock(title,arr){
+  if(!arr||!arr.length) return '';
+  const a=arr[0],b=arr[arr.length-1];
+  return `<div class="chart-wrap">
+    <div class="ct">${title}</div>
+    <div class="ce"><span>${a.d} ${f0(a.v)}</span><span>${b.d} ${f0(b.v)}</span></div>
+    ${spark(arr)}
+  </div>`;
+}
+
+/* ---------- 四个页面 ---------- */
+function page1(){
+  const n=D.ndx,s=D.spx,v=D.vix;
+  return `<div class="page">
+    <div class="hdr"><div class="eyebrow">纳指100 / 标普500 · 盘前简报</div>
+      <div class="r">${D.date_label}<small>数据截至 ${D.data_date}</small></div></div>
+    <div class="h1">${summary1()}</div>
+    <div class="rule"></div>
+    <div class="bigrow"><div class="lbl">纳斯达克100</div>
+      <div class="flex"><div class="val num">${f0(n.price)}</div>
+        <div class="chg num ${cls(n.pct)}">${pctS(n.pct)}</div></div></div>
+    <div class="bigrow"><div class="lbl">标普500</div>
+      <div class="flex"><div class="val num">${f0(s.price)}</div>
+        <div class="chg num ${cls(s.pct)}">${pctS(s.pct)}</div></div></div>
+    <div class="rule"></div>
+    <div class="g2">
+      <div class="box"><div class="t">纳斯达克100 PE 分位(5年)</div><div class="v num">${D.pe.ndx.pct}%</div></div>
+      <div class="box"><div class="t">标普500 PE 分位(5年)</div><div class="v blue num">${D.pe.spx.pct}%</div></div>
+      <div class="box full"><div><div class="t">VIX 恐慌指数</div>
+        <div class="s">较上一交易日 <span class="${cls(v.pct)}">${pctS(v.pct)}</span></div></div>
+        <div class="rv num">${f2(v.value).replace(/0$/,'')}</div></div>
+    </div>
+    <div class="foot"><span>数据来源：腾讯行情 · 蛋卷 · CBOE · ECB</span><span>仅供参考，不构成投资建议</span></div>
+  </div>`;
+}
+function page2(){
+  const n=D.ndx,s=D.spx,v=D.vix,fx=D.fx||{value:0,pct:0};
+  const cell=(t,p,c,foot)=>`<div class="qbox"><div class="t">${t}</div>
+      <div class="p num ${cls(p)}">${pctS(p)}</div><div class="f">${foot}</div></div>`;
+  return `<div class="page">
+    <div class="hdr"><div><div class="sec-t" style="font-size:22px">今天变了什么</div>
+      <div class="sub">四个数 · 与上一交易日相比</div></div>
+      <div class="r">${D.date_label}<small>数据截至 ${D.data_date}</small></div></div>
+    <div class="quad">
+      ${cell('纳斯达克100',n.pct,'',`指数 ${f0(n.price)}`)}
+      ${cell('标普500',s.pct,'',`指数 ${f0(s.price)}`)}
+      ${cell('VIX 恐慌指数',v.pct,'',`当前 ${f2(v.value)}`)}
+      ${cell('美元 / 人民币',fx.pct,'',`最新 ${f4(fx.value)}`)}
+    </div>
+    <div style="font-size:19px;font-weight:800;margin-top:20px">近 10 个交易日</div>
+    ${chartBlock('纳斯达克100',D.series.ndx)}
+    ${chartBlock('标普500',D.series.spx)}
+    <div class="concl">${summary2()}</div>
+    <div class="foot"><span>数据来源：腾讯行情 · 蛋卷 · CBOE · ECB</span><span>仅供参考，不构成投资建议</span></div>
+  </div>`;
+}
+function page3(){
+  const dd=D.dd, pe=D.pe;
+  const col=(side)=>{
+    const x=dd[side], p=pe[side];
+    const col=peColor(p.pct);
+    return `<div>
+      <div class="name">${side==='ndx'?'纳斯达克100':'标普500'}</div>${peTag(p.level)}
+      <div class="k">最新 PE (TTM)</div><div class="big num">${f2(p.pe)}</div>
+      <div class="sm">数据 ${D.data_date}</div>
+      <div class="k">近 5 年分位</div>
+      <div class="big num" style="color:${col}">${p.pct}%</div>
+      <div class="bar"><i style="width:${p.pct}%;background:${col}"></i></div>
+      <div class="k">当前回撤</div><div class="ddbig num">${f2(x.cur)}%</div>
+      <div class="sm">距 ${ymd(x.peak_date)} 高点，已 ${x.days} 个交易日</div>
+      <div class="k">上轮回撤</div><div class="ddbig num">${f2(x.prev)}%</div>
+      <div class="sm">${x.prev_range}，修复用了 ${x.prev_fix} 天</div>
+    </div>`;
+  };
+  return `<div class="page">
+    <div class="hdr"><div><div class="sec-t" style="font-size:22px">纳指100 vs 标普500</div>
+      <div class="sub">估值 · 回撤 · 位置感</div></div>
+      <div class="r">${D.date_label}<small>近 5 年分位</small></div></div>
+    <div class="vs">${col('ndx')}${col('spx')}</div>
+    <div class="concl">${summary3()}</div>
+    <div class="foot"><span>数据来源：腾讯行情 · 蛋卷</span><span>仅供参考，不构成投资建议</span></div>
+  </div>`;
+}
+function page4(){
+  const v=D.vix, idx=v.level_idx||2;
+  const labels=['极度乐观','偏乐观','正常','谨慎','恐慌'];
+  const lower = 100 - v.pct10y;
+  const arrowLeft = (idx+0.5)/5*100;
+  return `<div class="page">
+    <div class="hdr"><div><div class="sec-t" style="font-size:22px">恐慌指数 VIX</div>
+      <div class="sub">市场情绪 · 相对过去十年慌到什么程度</div></div>
+      <div class="r">${D.date_label}</div></div>
+    <div class="vix-top">
+      <div><div class="k">当前</div><div class="v num">${f2(v.value)}</div></div>
+      <div><div class="k" style="text-align:right">规则判定</div>
+        <div class="judge">${v.level}</div><div class="jm">按近 10 年分位计算</div></div>
+    </div>
+    <div class="vix-chg">较上一交易日 ${sgn(v.chg)} (${pctS(v.pct)})</div>
+    <div class="band">
+      <div class="arrow" style="left:${arrowLeft}%">▲</div>
+      <div class="segments"><i class="seg1"></i><i class="seg2"></i><i class="seg3"></i><i class="seg4"></i><i class="seg5"></i></div>
+      <div class="labels">${labels.map((l,i)=>`<span class="${i===idx?'on':''}">${l}</span>`).join('')}</div>
+    </div>
+    <div class="vix-bigline">比过去十年 ${lower}% 的时间都低</div>
+    <div class="vix-pcts">近 1 年 ${v.pct1y}% 分位 &nbsp;·&nbsp; 近 3 年 ${v.pct3y}% 分位</div>
+    <div class="concl">${vixSummary()}</div>
+    <div class="note">VIX 由标普500期权价格反推，衡量未来 30 天的预期波动。<br>它反映的是市场有多慌，不预测指数往哪走。</div>
+    <div class="foot"><span>数据来源：CBOE（延迟约 15 分钟）</span><span>仅供参考，不构成投资建议</span></div>
+  </div>`;
+}
+
+/* ---------- 渲染 & 导航 ---------- */
+const deck=document.getElementById('deck');
+function render(){
+  deck.innerHTML = page1()+page2()+page3()+page4();
+  const dots=document.getElementById('dots');
+  dots.innerHTML=[0,1,2,3].map(i=>`<div class="dot ${i===0?'on':''}" data-i="${i}"></div>`).join('');
+  dots.querySelectorAll('.dot').forEach(d=>d.onclick=()=>go(+d.dataset.i));
+  deck.scrollLeft=0;
+  updateNav(0);
+}
+function go(i){ deck.scrollTo({left:i*deck.clientWidth,behavior:'smooth'}); }
+function updateNav(i){
+  document.querySelectorAll('.dot').forEach((d,k)=>d.classList.toggle('on',k===i));
+  document.getElementById('pg').textContent=(i+1)+' / 4';
+}
+let ticking=false;
+deck.addEventListener('scroll',()=>{
+  if(ticking)return; ticking=true;
+  requestAnimationFrame(()=>{
+    const i=Math.round(deck.scrollLeft/deck.clientWidth);
+    updateNav(Math.max(0,Math.min(3,i))); ticking=false;
+  });
+},{passive:true});
+document.addEventListener('keydown',e=>{
+  const i=Math.round(deck.scrollLeft/deck.clientWidth);
+  if(e.key==='ArrowRight')go(Math.min(3,i+1));
+  if(e.key==='ArrowLeft')go(Math.max(0,i-1));
+});
+document.getElementById('btnRefresh').onclick=()=>load(true);
+
+function load(force){
+  const url='data.json'+(force?'?t='+Date.now():'');
+  fetch(url,{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json()})
+    .then(j=>{ if(j&&j.ndx&&j.ndx.price){D=j;render();} })
+    .catch(()=>{ if(force) alert('已是最新数据'); });
+}
+render();
+load();
+</script>
+</body>
+</html>
