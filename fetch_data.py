@@ -56,25 +56,80 @@ def fetch_quotes():
     return out
 
 
-# ---------- 2. CBOE VIX 实时（延迟报价） ----------
+# ---------- 2. CBOE VIX 实时（延迟报价），失败则走 Yahoo/FRED 备用链 ----------
+def _vix_out(cur, prev):
+    if prev <= 0:
+        prev = cur
+    return {'value': cur, 'chg': round(cur - prev, 2),
+            'pct': round((cur / prev - 1) * 100, 2) if prev else 0}
+
+
 def fetch_vix_now():
+    # 2a. CBOE 官方延迟报价
     txt = get('https://cdn.cboe.com/api/global/delayed_quotes/quotes/_VIX.json')
-    if not txt:
-        return None
-    try:
-        d = json.loads(txt)['data']
-        cur = float(d['current_price'])
-        chg = float(d.get('price_change') or 0)
-        prev = float(d.get('prev_day_close') or (cur - chg))
-        if prev <= 0:
-            prev = cur - chg
-        return {'value': cur, 'chg': chg, 'pct': chg / prev * 100 if prev else 0}
-    except Exception as e:
-        print(f'[warn] VIX 实时解析失败 {e}', flush=True)
-        return None
+    if txt:
+        try:
+            d = json.loads(txt)['data']
+            cur = float(d['current_price'])
+            chg = float(d.get('price_change') or 0)
+            prev = float(d.get('prev_day_close') or (cur - chg))
+            if prev <= 0:
+                prev = cur - chg
+            return {'value': cur, 'chg': chg, 'pct': chg / prev * 100 if prev else 0}
+        except Exception as e:
+            print(f'[warn] VIX 实时解析失败 {e}', flush=True)
+    # 2b. Yahoo chart 兜底
+    for host in ('query1', 'query2'):
+        txt = get(f'https://{host}.finance.yahoo.com/v8/finance/chart/%5EVIX?range=5d&interval=1d')
+        if not txt:
+            continue
+        try:
+            j = json.loads(txt)['chart']['result'][0]
+            closes = [float(x) for x in j['indicators']['quote'][0]['close'] if x]
+            cur = float(j['meta']['regularMarketPrice'])
+            if cur and closes:
+                prev = closes[-1] if abs(closes[-1] - cur) > 1e-6 else (closes[-2] if len(closes) > 1 else cur)
+                return _vix_out(cur, prev)
+        except Exception as e:
+            print(f'[warn] Yahoo VIX ({host}) 失败 {e}', flush=True)
+    return None
 
 
-# ---------- 3. CBOE VIX 历史（1990 至今）→ 分位 ----------
+# ---------- 3. VIX 历史（1990 至今）→ 分位；CBOE → Yahoo → FRED 三级备用 ----------
+def _vix_rows_from_fred():
+    txt = get('https://fred.stlouisfed.org/graph/fredgraph.csv?id=VIXCLS')
+    rows = []
+    if txt:
+        for r in csv.DictReader(io.StringIO(txt)):
+            d = (r.get('DATE') or '').strip()
+            v = (r.get('VIXCLS') or '').strip()
+            if not d or v in ('', '.'):
+                continue
+            try:
+                rows.append((datetime.date.fromisoformat(d), float(v)))
+            except ValueError:
+                continue
+    return rows
+
+
+def _vix_rows_from_yahoo():
+    txt = get('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?range=10y&interval=1d')
+    rows = []
+    if txt:
+        try:
+            j = json.loads(txt)['chart']['result'][0]
+            ts = j['timestamp']
+            closes = j['indicators']['quote'][0]['close']
+            for t, c in zip(ts, closes):
+                if not c:
+                    continue
+                d = datetime.date.fromtimestamp(t, datetime.timezone.utc)
+                rows.append((d, float(c)))
+        except Exception as e:
+            print(f'[warn] Yahoo VIX 历史失败 {e}', flush=True)
+    return rows
+
+
 def fetch_vix_history():
     txt = get('https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv')
     rows = []
@@ -85,7 +140,15 @@ def fetch_vix_history():
                 rows.append((d, float(r['CLOSE'])))
             except (ValueError, KeyError):
                 continue
-    return rows
+    if len(rows) > 500:
+        return rows
+    print('[warn] CBOE VIX 历史不可用，尝试 Yahoo…', flush=True)
+    rows = _vix_rows_from_yahoo()
+    if len(rows) > 500:
+        return sorted(rows)
+    print('[warn] Yahoo VIX 历史不可用，尝试 FRED…', flush=True)
+    rows = _vix_rows_from_fred()
+    return sorted(rows)
 
 
 def pct_rank(series, value):
@@ -245,6 +308,14 @@ def main():
     vix = fetch_vix_now()
     vh = fetch_vix_history()
     print(f'  VIX 实时: {vix} | 历史 {len(vh)} 条', flush=True)
+
+    # 实时源全挂时，用历史最后一日收盘兜底（通常为上一交易日）
+    if vix is None and len(vh) >= 2:
+        last, prev = vh[-1], vh[-2]
+        vix = {'value': last[1], 'chg': round(last[1] - prev[1], 2),
+               'pct': round((last[1] / prev[1] - 1) * 100, 2),
+               'src': f'历史收盘 {last[0].isoformat()}'}
+        print(f'  [fallback] VIX 改用历史收盘 {last[0]} = {last[1]}', flush=True)
 
     # VIX 分位（把当前值并入历史最后）
     if vh and vix:
