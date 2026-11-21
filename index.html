@@ -311,6 +311,7 @@ function page3(){
 function page4(){
   const v=D.vix||{value:null,chg:null,pct:null,pct10y:null,pct3y:null,pct1y:null,level:'数据缺失',level_idx:2};
   const idx=v.level_idx||2;
+  const arrowLeft = (idx+0.5)/5*100;
   const labels=['极度乐观','偏乐观','正常','谨慎','恐慌'];
   const lowerLine = v.pct10y==null?'暂缺历史对比数据':`比过去十年 ${100-v.pct10y}% 的时间都低`;
   const pcts = (v.pct1y==null&&v.pct3y==null)?'':`近 1 年 ${v.pct1y==null?'—':v.pct1y}% 分位 &nbsp;·&nbsp; 近 3 年 ${v.pct3y==null?'—':v.pct3y}% 分位`;
