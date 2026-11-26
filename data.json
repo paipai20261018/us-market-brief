@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-26 10:35",
-  "date_label": "11 月 26 日 周四",
+  "generated_at": "2026-11-27 06:55",
+  "date_label": "11 月 27 日 周五",
   "data_date": "11-25",
   "ndx": {
     "name": "纳斯达克100",
@@ -19,19 +19,19 @@
     "date": "2026-11-25"
   },
   "vix": {
-    "value": 28.29,
-    "chg": 1.93,
-    "pct": 7.32,
-    "pct10y": 92,
-    "pct3y": 97,
-    "pct1y": 98,
-    "level": "恐慌",
-    "level_idx": 4
+    "value": 26.8,
+    "chg": -1.49,
+    "pct": -5.27,
+    "pct10y": 89,
+    "pct3y": 96,
+    "pct1y": 96,
+    "level": "谨慎",
+    "level_idx": 3
   },
   "fx": {
-    "value": 6.6757,
-    "pct": 0.17,
-    "date": "2026-11-25"
+    "value": 6.6602,
+    "pct": -0.23,
+    "date": "2026-11-26"
   },
   "pe": {
     "ndx": {
